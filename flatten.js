@@ -6,31 +6,30 @@
 
 var flatten=function(){
   var global=Function("return this")();
-  var slice=Array.prototype.slice;
-  //Try to get the @@iterator
+  //Try to get the @@iterator.
   var iteratorSymbol=
         global.Symbol&&global.Symbol.iterator||  //Standard
         "@@iterator" in Array.prototype&&"@@iterator";  //Firefox
-  //Define a toArray function.
-  function toArray(e){
-    //Through by the iterator, if the iterator generator existed.
-    if(iteratorSymbol&&typeof e[iteratorSymbol]=="function"){
-      var values=[],iterator=e[iteratorSymbol].call(e);
-      for(var i=iterator.next();!i.done;i=iterator.next())
-        values.push(i.value);
-      return values;
-    }
-    //Convert by the slice method if "length" property existed.
-    else if(typeof e.length=="number")return slice.call(e);
-  };
   //Return the interface function.
   return function(){
     var results=[];
     (function callee(args){
-      for(var i=0,arr;i<args.length;i++)
-        if(typeof args[i]=="object"&&(arr=toArray(args[i])))
-          callee(arr);
-        else results.push(args[i]);
+      var generator;
+      //Record it and return if it's not an array-like or iterable object.
+      if(
+        typeof args!="object"||
+          typeof args.length!="number"&&
+          !(generator=iteratorSymbol&&args[iteratorSymbol])
+      )return results.push(args);
+      //Through by iterator if the generator is existed.
+      if(generator){ 
+        var iterator=generator.call(args),item;
+        while(!(item=iterator.next()).done)
+          callee(item.value);
+      }else{  //Through by `length`.
+        var i,length=args.length|0;
+        for(i=0;i<length;i++)callee(args[i]);
+      };
     })(arguments);
     return results;
   };
